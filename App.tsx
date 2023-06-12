@@ -7,6 +7,8 @@
 
 import React, { useState } from 'react';
 import Main from './components/Main';
+import Stack from './Stack';
+import { NavigationContainer } from '@react-navigation/native';
  
  
 
@@ -16,7 +18,10 @@ function App() {
 
  
   return (
-       <Main/>
+    <NavigationContainer>
+     <Stack/>
+
+    </NavigationContainer>
   )
      
 

@@ -9,30 +9,38 @@ import {
   Image,
   ScrollView,
   ImageBackground,
+  PermissionsAndroid,
+  Alert,
 } from 'react-native';
-import { PermissionsAndroid } from 'react-native';
-import RNFS from 'react-native-fs';
+import RNFS, { ReadDirItem } from 'react-native-fs';
 
 interface Folder {
   name: string;
   path: string;
 }
 
-const Main: React.FC = () => {
-  const [modalVisible, setModalVisible] = useState<boolean>(false);
-  const [modalVisible2, setModalVisible2] = useState<boolean>(false);
-  const [folderName, setFolderName] = useState<string>('');
-  const [fileName, setFileName] = useState<string>('');
-  const [currentPath, setCurrentPath] = useState<string>(RNFS.DocumentDirectoryPath);
+const Main = ({ navigation }: any) => {
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalVisible2, setModalVisible2] = useState(false);
+  const [folderName, setFolderName] = useState('');
+  const [fileName, setFileName] = useState('');
+  const [currentPath, setCurrentPath] = useState(RNFS.DocumentDirectoryPath);
   const [folders, setFolders] = useState<Folder[]>([]);
 
   const requestStoragePermission = async () => {
     try {
       const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE
+        PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+        {
+          title: 'Storage Permission',
+          message: 'App needs access to your storage to work properly.',
+          buttonNeutral: 'Ask Me Later',
+          buttonNegative: 'Cancel',
+          buttonPositive: 'OK',
+        }
       );
       if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-        console.log('Storage permission granted');
+        console.log('You can use the storage');
         getAllFolders(currentPath);
       } else {
         console.log('Storage permission denied');
@@ -48,7 +56,7 @@ const Main: React.FC = () => {
 
   const getAllFolders = async (path: string) => {
     try {
-      const result = await RNFS.readDir(path);
+      const result: ReadDirItem[] = await RNFS.readDir(path);
       console.log('GOT RESULT', result);
       setFolders(result.map((item) => ({ name: item.name, path: item.path })));
     } catch (err) {
@@ -57,8 +65,8 @@ const Main: React.FC = () => {
   };
 
   const isFolder = (name: string): boolean => {
-    const itsFolder=name.includes('.')
-    return  itsFolder
+    const itsFolder = name.includes('.')
+    return itsFolder
   };
 
   const createFolder = async () => {
@@ -72,10 +80,7 @@ const Main: React.FC = () => {
 
   const createFile = async () => {
     try {
-      await RNFS.writeFile(
-        `${currentPath}/${fileName}.txt`,
-        'hello how are you'
-      );
+      await RNFS.writeFile(`${currentPath}/${fileName}`, 'hello how are you', 'utf8');
       getAllFolders(currentPath);
     } catch (error) {
       console.log(error);
@@ -91,75 +96,102 @@ const Main: React.FC = () => {
     }
   };
 
+
+  
+const renameItem = (path:string) => {
+  Alert.prompt('Rename', 'Enter the new name:', (newName) => {
+    if (newName !== null) {
+      // Find the item with the provided path in the folders data
+      const updatedFolders = folders.map((item) => {
+        if (item.path === path) {
+          return {
+            ...item,
+            name: newName,
+          };
+        }
+        return item;
+      });
+
+      // Update the folders data with the renamed item
+      setFolders(updatedFolders);
+    }
+  });
+};
+
   return (
     <View style={{ flex: 1 }}>
-      <View
+      <Text
+        onPress={() => navigation.navigate('Folders')}
         style={{
-          width: '100%',
           flexDirection: 'row',
-          margin: 20,
-          marginTop: 10,
-        }}
-      >
+          width: '30%',
+          height: 50,
+          textAlign: 'center',
+          paddingBottom: 10,
+        }}>
+        <Image
+          source={require('../images/undo.png')} />
+        <Text style={{color:'black',fontWeight:'bold'}}>Go Folders</Text>
+      </Text>
+      <View style={{ width: '100%', flexDirection: 'row', marginBottom: 20, marginRight: 20, marginLeft: 20 }}>
         {currentPath === RNFS.DocumentDirectoryPath ? null : (
           <Text
             style={{ fontWeight: '700' }}
             onPress={() => {
               setCurrentPath(RNFS.DocumentDirectoryPath);
               getAllFolders(RNFS.DocumentDirectoryPath);
-            }}
-          >
+            }}>
             Back
           </Text>
         )}
-        <Text style={{ marginLeft: 20 }}>{currentPath}</Text>
-      </View>
-      <View style={{ marginTop: 50 }}>
-        <ScrollView>
-          <FlatList
-            data={folders}
-            numColumns={2}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={{
-                  width: '50%',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  height: 100,
-                }}
-                onPress={() => {
-                  if (!isFolder(item.name)) {
-                    setCurrentPath(item.path);
-                    getAllFolders(item.path);
-                  }
-                }}
-                onLongPress={() => {
-                  deleteDir(item.path);
-                }}
-              >
-                {isFolder(item.name) ? (
-                  <Image
-                    source={require('../images/icon-file.png')}
-                    style={{ width: 50, height: 50 }}
-                  />
-                ) : (
-                  <Image
-                    source={require('../images/folder.png')}
-                    style={{ width: 50, height: 50 }}
-                  />
-                )}
-                <Text>
-                  {item.name.length > 20
-                    ? `${item.name.substring(0, 10)}...`
-                    : item.name}
-                </Text>
-              </TouchableOpacity>
-            )}
-            keyExtractor={(item) => item.path}
-          />
-        </ScrollView>
-      </View>
 
+        <Text style={{ marginLeft: 20,color:'black',fontStyle:'italic' }}>{currentPath}</Text>
+      </View>
+      <View>
+        <FlatList
+          style={{ marginBottom: 100 }}
+          data={folders}
+          numColumns={2}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={{
+                width: '50%',
+                justifyContent: 'center',
+                alignItems: 'center',
+                height: 100,
+              }}
+              onPress={() => {
+                if (!isFolder(item.name)) {
+                  setCurrentPath(item.path);
+                  getAllFolders(item.path);
+                }
+              }}
+              onLongPress={() => {
+                Alert.alert(
+                  'Delete File/Folder',
+                  'Are you sure deleted.',
+                  [
+                    { text: 'OK', onPress: () => deleteDir(item.path) },
+                    { text: 'Cancel', onPress: () => console.log('cancel pressed..'), style: 'cancel' }
+                  ]
+                );
+
+
+              }}>
+              {isFolder(item.name) ? (
+                <Image source={require('../images/icon-file.png')} style={{ width: 50, height: 50 }} />
+              ) : (
+                <Image
+                  source={require('../images/folder.png')}
+                  style={{ width: 50, height: 50 }}
+                />
+              )}
+              <Text>{item.name.length > 20 ? `${item.name.substring(0, 10)}...` : item.name}</Text>
+            </TouchableOpacity>
+          )}
+          keyExtractor={(item) => item.path}
+        />
+      </View>
       <TouchableOpacity
         style={{
           position: 'absolute',
@@ -167,15 +199,12 @@ const Main: React.FC = () => {
           bottom: 50,
           width: 50,
           height: 50,
-          borderRadius: 25,
           justifyContent: 'center',
           alignItems: 'center',
         }}
         onPress={() => {
           setModalVisible(true);
-        }}
-      >
-         
+        }}>
         <ImageBackground
           style={{
             height: 50,
@@ -183,10 +212,8 @@ const Main: React.FC = () => {
             justifyContent: 'center',
             alignItems: 'center',
           }}
-          source={require('../images/open-folder.png')}
-        >
-           <Text style={{fontSize:13,color:'black'}}>Add</Text>
-        
+          source={require('../images/open-folder.png')}>
+          <Text style={{ fontSize: 40 }}>+</Text>
         </ImageBackground>
       </TouchableOpacity>
       <TouchableOpacity
@@ -201,24 +228,20 @@ const Main: React.FC = () => {
         }}
         onPress={() => {
           setModalVisible2(true);
-        }}
-      >
-        
+        }}>
         <ImageBackground
           style={{ height: 50, width: 50, justifyContent: 'center', alignItems: 'center' }}
           source={require('../images/file.png')}
         >
-           <Text style={{fontSize:13,color:'black'}}>Add</Text>
+          <Text style={{ fontSize: 40 }}>+</Text>
         </ImageBackground>
       </TouchableOpacity>
-
       <Modal
         transparent
         visible={modalVisible}
         onRequestClose={() => {
           setModalVisible(false);
-        }}
-      >
+        }}>
         <View
           style={{
             position: 'absolute',
@@ -229,24 +252,21 @@ const Main: React.FC = () => {
             backgroundColor: 'rgba(0,0,0,0.5)',
             justifyContent: 'center',
             alignItems: 'center',
-          }}
-        >
+          }}>
           <View
             style={{
               backgroundColor: '#fff',
               width: '90%',
               height: 200,
               borderRadius: 10,
-            }}
-          >
+            }}>
             <Text
               style={{
                 fontSize: 20,
                 fontWeight: 'bold',
                 marginLeft: 20,
                 marginTop: 15,
-              }}
-            >
+              }}>
               Add New Folder
             </Text>
             <TextInput
@@ -278,21 +298,18 @@ const Main: React.FC = () => {
                 setModalVisible(false);
                 createFolder();
                 setFolderName('');
-              }}
-            >
+              }}>
               <Text style={{ color: '#fff', fontSize: 18 }}>Create Folder</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
-
       <Modal
         transparent
         visible={modalVisible2}
         onRequestClose={() => {
           setModalVisible2(false);
-        }}
-      >
+        }}>
         <View
           style={{
             position: 'absolute',
@@ -303,24 +320,21 @@ const Main: React.FC = () => {
             backgroundColor: 'rgba(0,0,0,0.5)',
             justifyContent: 'center',
             alignItems: 'center',
-          }}
-        >
+          }}>
           <View
             style={{
               backgroundColor: '#fff',
               width: '90%',
               height: 200,
               borderRadius: 10,
-            }}
-          >
+            }}>
             <Text
               style={{
                 fontSize: 20,
                 fontWeight: 'bold',
                 marginLeft: 20,
                 marginTop: 15,
-              }}
-            >
+              }}>
               Add New File
             </Text>
             <TextInput
@@ -352,8 +366,7 @@ const Main: React.FC = () => {
                 setModalVisible2(false);
                 createFile();
                 setFileName('');
-              }}
-            >
+              }}>
               <Text style={{ color: '#fff', fontSize: 18 }}>Create File</Text>
             </TouchableOpacity>
           </View>
@@ -364,3 +377,7 @@ const Main: React.FC = () => {
 };
 
 export default Main;
+
+ 
+
+ 
