@@ -3,16 +3,14 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Modal,
-  TextInput,
   FlatList,
   Image,
-  ScrollView,
   ImageBackground,
   PermissionsAndroid,
   Alert,
 } from 'react-native';
 import RNFS, { ReadDirItem } from 'react-native-fs';
+import ModalData from './Modal';
 
 interface Folder {
   name: string;
@@ -26,6 +24,9 @@ const Main = ({ navigation }: any) => {
   const [fileName, setFileName] = useState('');
   const [currentPath, setCurrentPath] = useState(RNFS.DocumentDirectoryPath);
   const [folders, setFolders] = useState<Folder[]>([]);
+  const [renameModalVisible, setRenameModalVisible] = useState(false);
+  const [renameItemPath, setRenameItemPath] = useState('');
+  const [newItemName, setNewItemName] = useState('');
 
   const requestStoragePermission = async () => {
     try {
@@ -58,6 +59,7 @@ const Main = ({ navigation }: any) => {
     try {
       const result: ReadDirItem[] = await RNFS.readDir(path);
       console.log('GOT RESULT', result);
+
       setFolders(result.map((item) => ({ name: item.name, path: item.path })));
     } catch (err) {
       console.log(err);
@@ -80,12 +82,13 @@ const Main = ({ navigation }: any) => {
 
   const createFile = async () => {
     try {
-      await RNFS.writeFile(`${currentPath}/${fileName}`, 'hello how are you', 'utf8');
+      await RNFS.writeFile(`${currentPath}/${fileName}`, 'utf8');
       getAllFolders(currentPath);
     } catch (error) {
       console.log(error);
     }
   };
+
 
   const deleteDir = async (path: string) => {
     try {
@@ -97,26 +100,70 @@ const Main = ({ navigation }: any) => {
   };
 
 
-  
-const renameItem = (path:string) => {
-  Alert.prompt('Rename', 'Enter the new name:', (newName) => {
-    if (newName !== null) {
-      // Find the item with the provided path in the folders data
-      const updatedFolders = folders.map((item) => {
-        if (item.path === path) {
-          return {
-            ...item,
-            name: newName,
-          };
-        }
-        return item;
-      });
 
-      // Update the folders data with the renamed item
-      setFolders(updatedFolders);
+  const openRenameModal = (path: string) => {
+    setRenameItemPath(path);
+    setNewItemName('');
+    setRenameModalVisible(true);
+  };
+
+  const renameItem = async () => {
+    try {
+      if (newItemName === '') {
+        Alert.alert("warning", 'Please Enter Your new Name..')
+      }
+      else {
+        await RNFS.moveFile(renameItemPath, `${currentPath}/${newItemName}`);
+        setRenameModalVisible(false);
+        getAllFolders(currentPath);
+      }
+
+    } catch (error) {
+      console.log(error);
     }
-  });
-};
+  };
+
+  const showOptions = (item: Folder) => {
+    Alert.alert(
+      'Options',
+      '',
+      [
+        {
+          text: 'Delete',
+          onPress: () => Alert.alert(
+            "Warning",
+            'Are you sure you want to delete this file/folder',
+            [
+              {
+                text: 'Delete',
+                onPress: () => deleteDir(item.path)
+              },
+              {
+                text: 'Cancel',
+                onPress: () => console.log('Cancel pressed..'),
+                style: 'cancel',
+              }
+            ]
+          ),
+
+        },
+        {
+          text: 'Rename',
+          onPress: () => openRenameModal(item.path),
+        },
+        {
+          text: 'Cancel',
+          onPress: () => console.log('Cancel pressed..'),
+          style: 'cancel',
+        },
+
+      ],
+
+    );
+  };
+
+
+
 
   return (
     <View style={{ flex: 1 }}>
@@ -131,7 +178,7 @@ const renameItem = (path:string) => {
         }}>
         <Image
           source={require('../images/undo.png')} />
-        <Text style={{color:'black',fontWeight:'bold'}}>Go Folders</Text>
+        <Text style={{ color: 'black', fontWeight: 'bold' }}>Go Folders</Text>
       </Text>
       <View style={{ width: '100%', flexDirection: 'row', marginBottom: 20, marginRight: 20, marginLeft: 20 }}>
         {currentPath === RNFS.DocumentDirectoryPath ? null : (
@@ -145,7 +192,7 @@ const renameItem = (path:string) => {
           </Text>
         )}
 
-        <Text style={{ marginLeft: 20,color:'black',fontStyle:'italic' }}>{currentPath}</Text>
+        <Text style={{ marginLeft: 20, color: 'black', fontStyle: 'italic' }}>{currentPath}</Text>
       </View>
       <View>
         <FlatList
@@ -167,16 +214,7 @@ const renameItem = (path:string) => {
                 }
               }}
               onLongPress={() => {
-                Alert.alert(
-                  'Delete File/Folder',
-                  'Are you sure deleted.',
-                  [
-                    { text: 'OK', onPress: () => deleteDir(item.path) },
-                    { text: 'Cancel', onPress: () => console.log('cancel pressed..'), style: 'cancel' }
-                  ]
-                );
-
-
+                showOptions(item)
               }}>
               {isFolder(item.name) ? (
                 <Image source={require('../images/icon-file.png')} style={{ width: 50, height: 50 }} />
@@ -236,148 +274,24 @@ const renameItem = (path:string) => {
           <Text style={{ fontSize: 40 }}>+</Text>
         </ImageBackground>
       </TouchableOpacity>
-      <Modal
-        transparent
-        visible={modalVisible}
-        onRequestClose={() => {
-          setModalVisible(false);
-        }}>
-        <View
-          style={{
-            position: 'absolute',
-            top: 0,
-            right: 0,
-            bottom: 0,
-            left: 0,
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            justifyContent: 'center',
-            alignItems: 'center',
-          }}>
-          <View
-            style={{
-              backgroundColor: '#fff',
-              width: '90%',
-              height: 200,
-              borderRadius: 10,
-            }}>
-            <Text
-              style={{
-                fontSize: 20,
-                fontWeight: 'bold',
-                marginLeft: 20,
-                marginTop: 15,
-              }}>
-              Add New Folder
-            </Text>
-            <TextInput
-              placeholder="Enter Folder Name"
-              value={folderName}
-              onChangeText={(txt) => setFolderName(txt)}
-              style={{
-                width: '90%',
-                height: 50,
-                borderWidth: 1,
-                alignSelf: 'center',
-                marginTop: 20,
-                paddingLeft: 20,
-                borderRadius: 10,
-              }}
-            />
-            <TouchableOpacity
-              style={{
-                marginTop: 25,
-                alignSelf: 'center',
-                width: '90%',
-                height: 50,
-                borderRadius: 10,
-                backgroundColor: '#000',
-                justifyContent: 'center',
-                alignItems: 'center',
-              }}
-              onPress={() => {
-                setModalVisible(false);
-                createFolder();
-                setFolderName('');
-              }}>
-              <Text style={{ color: '#fff', fontSize: 18 }}>Create Folder</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-      <Modal
-        transparent
-        visible={modalVisible2}
-        onRequestClose={() => {
-          setModalVisible2(false);
-        }}>
-        <View
-          style={{
-            position: 'absolute',
-            top: 0,
-            right: 0,
-            bottom: 0,
-            left: 0,
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            justifyContent: 'center',
-            alignItems: 'center',
-          }}>
-          <View
-            style={{
-              backgroundColor: '#fff',
-              width: '90%',
-              height: 200,
-              borderRadius: 10,
-            }}>
-            <Text
-              style={{
-                fontSize: 20,
-                fontWeight: 'bold',
-                marginLeft: 20,
-                marginTop: 15,
-              }}>
-              Add New File
-            </Text>
-            <TextInput
-              placeholder="Enter File Name"
-              value={fileName}
-              onChangeText={(txt) => setFileName(txt)}
-              style={{
-                width: '90%',
-                height: 50,
-                borderWidth: 1,
-                alignSelf: 'center',
-                marginTop: 20,
-                paddingLeft: 20,
-                borderRadius: 10,
-              }}
-            />
-            <TouchableOpacity
-              style={{
-                marginTop: 25,
-                alignSelf: 'center',
-                width: '90%',
-                height: 50,
-                borderRadius: 10,
-                backgroundColor: '#000',
-                justifyContent: 'center',
-                alignItems: 'center',
-              }}
-              onPress={() => {
-                setModalVisible2(false);
-                createFile();
-                setFileName('');
-              }}>
-              <Text style={{ color: '#fff', fontSize: 18 }}>Create File</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+      <ModalData renameModalVisible={renameModalVisible}
+        setNewItemName={setNewItemName}
+        setRenameModalVisible={setRenameModalVisible}
+        folderName={folderName}
+        setFolderName={setFolderName}
+        modalVisible={modalVisible}
+        setModalVisible={setModalVisible}
+        createFolder={createFolder}
+        setModalVisible2={setModalVisible2}
+        modalVisible2={modalVisible2}
+        fileName={fileName}
+        createFile={createFile}
+        setFileName={setFileName}
+        newItemName={newItemName}
+        renameItem={renameItem} />
+
     </View>
   );
 };
 
 export default Main;
-
- 
-
- 

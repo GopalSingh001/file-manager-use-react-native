@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, Image } from 'react-native';
+import { View, Text, FlatList, Image,Alert } from 'react-native';
 import RNFS from 'react-native-fs';
 
 
@@ -10,6 +10,7 @@ interface VideoItem {
 
 function Videos() {
   const [videoFiles, setVideoFiles] = useState<VideoItem[]>([]);
+ 
 
   useEffect(() => {
     getVideoFiles();
@@ -26,6 +27,28 @@ function Videos() {
     } catch (error) {
       console.error('Error reading directory:', error);
     }
+  };
+
+  
+  const handleDelete = async (fileName: string) => {
+    try {
+      await RNFS.unlink(`${RNFS.DocumentDirectoryPath}/${fileName}`);
+      getVideoFiles();
+      
+    } catch (error) {
+      console.error('Error deleting file:', error);
+    }
+  };
+
+  const confirmDelete = (fileName: string) => {
+    Alert.alert(
+      'Confirm Delete',
+      `Are you sure you want to delete ${fileName}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', onPress: () => handleDelete(fileName) },
+      ]
+    );
   };
 
   return (
@@ -49,13 +72,15 @@ function Videos() {
         data={videoFiles}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <View style={{ flexDirection: 'row' , width:"100%"}}>
+          <Text
+          onLongPress={() => confirmDelete(item.name)}
+          style={{ flexDirection: 'row' , width:"100%"}}>
         
             <Image source={require('../images/play.png')} style={{height:26, marginTop: 15, marginEnd: 4,width:26 }}/>
             <Text style={{ fontStyle: 'italic', fontSize: 20, paddingTop: 10 }}>{item.name}</Text>
 
              
-          </View>
+          </Text>
         )}
       />
     </View>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, Image } from 'react-native';
+import { View, Text, FlatList, Image,Alert,TouchableHighlight } from 'react-native';
 import RNFS from 'react-native-fs';
 
 
@@ -28,6 +28,28 @@ function Music() {
     }
   };
 
+
+  const handleDelete = async (fileName: string) => {
+    try {
+      await RNFS.unlink(`${RNFS.DocumentDirectoryPath}/${fileName}`);
+      getMusicFiles();
+    } catch (error) {
+      console.error('Error deleting file:', error);
+    }
+  };
+
+  const confirmDelete = (fileName: string) => {
+    Alert.alert(
+      'Confirm Delete',
+      `Are you sure you want to delete ${fileName}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', onPress: () => handleDelete(fileName) },
+      ]
+    );
+  };
+
+
   return (
     <View style={{ flex: 1, justifyContent: 'center' }}>
       <Text
@@ -49,13 +71,16 @@ function Music() {
         data={MusicFiles}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <View style={{ flexDirection: 'row' ,width:"100%"}}>
+          <Text
+            style={{ flexDirection: 'row' ,width:"100%"}}
+            onLongPress={()=>confirmDelete(item.name)}
+            >
         
             <Image source={require('../images/musical-note.png')} style={{height:26, marginTop: 15, marginEnd: 4,width:26 }}/>
             <Text style={{ fontStyle: 'italic', fontSize: 20, paddingTop: 10 }}>{item.name}</Text>
             
              
-          </View>
+          </Text>
         )}
       />
     </View>
