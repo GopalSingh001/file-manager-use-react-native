@@ -13,7 +13,8 @@ const Tab = () => {
     initialRouteName='Music'
     barStyle={{ backgroundColor: '#d9d9d9'}}
     activeColor='black'
-    shifting='true'>
+     
+    >
         <Tabs.Screen 
         name='Music' 
         component={Music}
