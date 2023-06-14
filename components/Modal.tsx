@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Modal, TextInput, TouchableOpacity, Alert, } from 'react-native';
+import { View, Text, Modal, TextInput, TouchableOpacity, Alert, StyleSheet } from 'react-native';
 
 interface ModalDataProps {
   renameItem: () => void;
@@ -17,6 +17,13 @@ interface ModalDataProps {
   fileName: string;
   setFileName: (text: string) => void;
   createFile: () => void;
+  optionsVisible: boolean;
+  closeOptions: () => void;
+  handleDelete: () => void;
+  handleRename: () => void;
+  setOptionsVisible: (visible :boolean) => void;
+  folders: any[];
+  setFolders: (folders: any[]) => void;
 
 }
 
@@ -35,7 +42,16 @@ const ModalData: React.FC<ModalDataProps> = ({
   modalVisible2,
   fileName,
   setFileName,
-  createFile }) => {
+  createFile,
+  optionsVisible,
+  closeOptions,
+  handleDelete,
+  handleRename,
+  setOptionsVisible,
+  folders,
+  setFolders
+  
+}) => {
   return (
     <View>
       {/* Rename Modal */}
@@ -182,7 +198,7 @@ const ModalData: React.FC<ModalDataProps> = ({
               }}
               onPress={() => {
                 if (folderName === '') {
-                  Alert.alert('Instructions','Please Enter Folder Name..')
+                  Alert.alert('Instructions', 'Please Enter Folder Name..')
                 }
                 else {
                   setModalVisible(false);
@@ -199,6 +215,7 @@ const ModalData: React.FC<ModalDataProps> = ({
 
       {/* file creation Model */}
       <Modal
+       
         animationType='slide'
         transparent
         visible={modalVisible2}
@@ -206,7 +223,9 @@ const ModalData: React.FC<ModalDataProps> = ({
           setModalVisible2(false);
         }}>
         <View
+          
           style={{
+
             position: 'absolute',
             top: 0,
             right: 0,
@@ -224,6 +243,7 @@ const ModalData: React.FC<ModalDataProps> = ({
               borderRadius: 10,
             }}>
             <Text
+            
               style={{
                 fontSize: 20,
                 fontWeight: 'bold',
@@ -260,8 +280,8 @@ const ModalData: React.FC<ModalDataProps> = ({
                 alignItems: 'center',
               }}
               onPress={() => {
-                if (fileName === '') {
-                  Alert.alert('Instructions','Please Enter File Name..  Like a (music.mp3,  video.mp4,  image.jpf,  doc.pdf etc.)')
+                if (fileName == '') {
+                  Alert.alert('Warning', 'Please Enter File Name..  Like a (music.mp3,  video.mp4,  image.jpf,  doc.pdf etc.)')
                 }
                 else {
                   createFile();
@@ -275,8 +295,66 @@ const ModalData: React.FC<ModalDataProps> = ({
           </View>
         </View>
       </Modal>
+
+      {/* show Options  */}
+      <Modal
+      animationType='slide'
+        visible={optionsVisible}
+        transparent
+        onRequestClose={closeOptions}
+      >
+        <View style={styles.modalContainer}>
+        <TouchableOpacity
+      style={styles.optionButton}
+      onPress={() => {
+        Alert.alert(
+          'Delete File/Folder',
+          'Are you sure you want to delete this file/folder?',
+          [
+            {
+              text: 'Cancel',
+              style: 'cancel',
+              onPress:()=>setOptionsVisible(false)
+            },
+            {
+              text: 'Delete',
+              style: 'destructive',
+              onPress: handleDelete,
+            },
+          ]
+        );
+      }}
+    >
+      <Text style={styles.optionText}>Delete</Text>
+    </TouchableOpacity>
+          <TouchableOpacity style={styles.optionButton} onPress={handleRename}>
+            <Text style={styles.optionText}>Rename</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.optionButton} onPress={closeOptions}>
+            <Text style={styles.optionText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
     </View>
   );
 }
-
+const styles = StyleSheet.create({
+  modalContainer: {
+    flex: 1,
+    justifyContent:'flex-end',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  optionButton: {
+    width:"100%",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+     marginBottom:1,
+    backgroundColor: 'black',
+     
+  },
+  optionText: {fontSize:20,
+    color:'white',
+    fontStyle:'italic'}
+});
 export default ModalData;

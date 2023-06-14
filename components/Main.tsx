@@ -16,6 +16,11 @@ interface Folder {
   name: string;
   path: string;
 }
+interface FileItem {
+  name: string;
+  path: string;
+  isDirectory: boolean;
+}
 
 const Main = ({ navigation }: any) => {
   const [modalVisible, setModalVisible] = useState(false);
@@ -27,29 +32,48 @@ const Main = ({ navigation }: any) => {
   const [renameModalVisible, setRenameModalVisible] = useState(false);
   const [renameItemPath, setRenameItemPath] = useState('');
   const [newItemName, setNewItemName] = useState('');
+  const [optionsVisible, setOptionsVisible] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<Folder | null>(null);
+  const [files, setFiles] = useState<FileItem[]>([]);
+
+
 
   const requestStoragePermission = async () => {
     try {
-      const granted = await PermissionsAndroid.request(
+      const granted = await PermissionsAndroid.requestMultiple([
+        PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
         PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
-        {
-          title: 'Storage Permission',
-          message: 'App needs access to your storage to work properly.',
-          buttonNeutral: 'Ask Me Later',
-          buttonNegative: 'Cancel',
-          buttonPositive: 'OK',
-        }
-      );
-      if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-        console.log('You can use the storage');
-        getAllFolders(currentPath);
+      ]);
+      if (
+        granted['android.permission.READ_EXTERNAL_STORAGE'] === PermissionsAndroid.RESULTS.GRANTED &&
+        granted['android.permission.WRITE_EXTERNAL_STORAGE'] === PermissionsAndroid.RESULTS.GRANTED
+      ) {
+        console.log('Storage permissions granted');
+        getAllFiles();
+        // getAllFolders(currentPath)
       } else {
-        console.log('Storage permission denied');
+        console.log('Storage permissions denied');
       }
     } catch (err) {
       console.log(err);
     }
   };
+  // get all files from external storage ..
+  const getAllFiles = async () => {
+    try {
+      const externalStoragePath = RNFS.ExternalStorageDirectoryPath;
+      const result: ReadDirItem[] = await RNFS.readDir(externalStoragePath);
+      const fileItems: FileItem[] = result.map((item) => ({
+        name: item.name,
+        path: item.path,
+        isDirectory: item.isDirectory(),
+      }));
+      setFiles(fileItems);
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
 
   useEffect(() => {
     requestStoragePermission();
@@ -116,6 +140,8 @@ const Main = ({ navigation }: any) => {
         await RNFS.moveFile(renameItemPath, `${currentPath}/${newItemName}`);
         setRenameModalVisible(false);
         getAllFolders(currentPath);
+
+
       }
 
     } catch (error) {
@@ -123,46 +149,25 @@ const Main = ({ navigation }: any) => {
     }
   };
 
+
   const showOptions = (item: Folder) => {
-    Alert.alert(
-      'Options',
-      '',
-      [
-        {
-          text: 'Delete',
-          onPress: () => Alert.alert(
-            "Warning",
-            'Are you sure you want to delete this file/folder',
-            [
-              {
-                text: 'Delete',
-                onPress: () => deleteDir(item.path)
-              },
-              {
-                text: 'Cancel',
-                onPress: () => console.log('Cancel pressed..'),
-                style: 'cancel',
-              }
-            ]
-          ),
-
-        },
-        {
-          text: 'Rename',
-          onPress: () => openRenameModal(item.path),
-        },
-        {
-          text: 'Cancel',
-          onPress: () => console.log('Cancel pressed..'),
-          style: 'cancel',
-        },
-
-      ],
-
-    );
+    setSelectedItem(item);
+    setOptionsVisible(true);
   };
 
+  const closeOptions = () => {
+    setOptionsVisible(false);
+  };
 
+  const handleDelete = () => {
+    closeOptions();
+    deleteDir(selectedItem!.path);
+  };
+
+  const handleRename = () => {
+    closeOptions();
+    openRenameModal(selectedItem!.path);
+  };
 
 
   return (
@@ -216,8 +221,21 @@ const Main = ({ navigation }: any) => {
               onLongPress={() => {
                 showOptions(item)
               }}>
+
               {isFolder(item.name) ? (
-                <Image source={require('../images/icon-file.png')} style={{ width: 50, height: 50 }} />
+                item.name.endsWith('.jpg') ?
+                  <Image source={require('../images/jpg-file.png')} style={{ width: 50, height: 50 }} />
+                  : item.name.endsWith('.pdf') ?
+                    <Image source={require('../images/pdf.png')} style={{ width: 50, height: 50 }} />
+                    : item.name.endsWith('.jpeg') ?
+                      <Image source={require('../images/jpeg.png')} style={{ width: 50, height: 50 }} />
+                      : item.name.endsWith('.png') ?
+                        <Image source={require('../images/png.png')} style={{ width: 50, height: 50 }} />
+                        : item.name.endsWith('.mp3') ?
+                          <Image source={require('../images/musical-note.png')} style={{ width: 50, height: 50 }} />
+                          : item.name.endsWith('.mp4') ?
+                            <Image source={require('../images/play.png')} style={{ width: 50, height: 50 }} />
+                            : <Image source={require('../images/icon-file.png')} style={{ width: 50, height: 50 }} />
               ) : (
                 <Image
                   source={require('../images/folder.png')}
@@ -230,6 +248,7 @@ const Main = ({ navigation }: any) => {
           keyExtractor={(item) => item.path}
         />
       </View>
+
       <TouchableOpacity
         style={{
           position: 'absolute',
@@ -288,7 +307,15 @@ const Main = ({ navigation }: any) => {
         createFile={createFile}
         setFileName={setFileName}
         newItemName={newItemName}
-        renameItem={renameItem} />
+        renameItem={renameItem}
+        optionsVisible={optionsVisible}
+        handleDelete={handleDelete}
+        handleRename={handleRename}
+        closeOptions={closeOptions}
+        setOptionsVisible={setOptionsVisible}
+        folders={folders}
+        setFolders={setFolders}
+      />
 
     </View>
   );

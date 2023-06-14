@@ -47,6 +47,7 @@ function Videos() {
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Delete', onPress: () => handleDelete(fileName) },
+   
       ]
     );
   };
